@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>单词本 · 背单词</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --accent: #38bdf8;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+    header { text-align: center; margin-bottom: 2rem; }
+    header h1 { font-size: 2rem; color: var(--accent); }
+    header p { color: var(--muted); margin-top: .5rem; }
+    .status {
+      font-size: .85rem;
+      padding: .3rem .8rem;
+      border-radius: 999px;
+      margin-top: .8rem;
+      display: inline-block;
+    }
+    .status.ok { background: #14532d; color: #4ade80; }
+    .status.fail { background: #4c1d1d; color: #f87171; }
+
+    .card {
+      background: var(--card);
+      border-radius: 1rem;
+      padding: 2.5rem 2rem;
+      width: min(480px, 100%);
+      box-shadow: 0 20px 40px rgba(0,0,0,.3);
+      text-align: center;
+    }
+    .word { font-size: 2.6rem; font-weight: 700; letter-spacing: 1px; }
+    .phonetic { color: var(--muted); margin: .6rem 0 1.2rem; font-style: italic; }
+    .meaning {
+      font-size: 1.2rem;
+      min-height: 1.6rem;
+      transition: opacity .2s;
+    }
+    .meaning.hidden { opacity: 0; }
+    .example {
+      color: var(--muted);
+      font-size: .95rem;
+      margin-top: 1rem;
+      min-height: 1.4rem;
+    }
+
+    .controls {
+      display: flex;
+      gap: .8rem;
+      margin-top: 2rem;
+      width: min(480px, 100%);
+    }
+    button {
+      flex: 1;
+      padding: .9rem;
+      border: none;
+      border-radius: .6rem;
+      font-size: 1rem;
+      cursor: pointer;
+      background: #334155;
+      color: var(--text);
+      transition: background .15s;
+    }
+    button:hover { background: #475569; }
+    button.primary { background: var(--accent); color: #0f172a; font-weight: 600; }
+    button.primary:hover { background: #0ea5e9; }
+
+    .progress { margin-top: 1.5rem; color: var(--muted); font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>单词本</h1>
+    <p>每天进步一点点</p>
+    <span id="status" class="status">正在连接后端…</span>
+  </header>
+
+  <main class="card">
+    <div id="word" class="word">—</div>
+    <div id="phonetic" class="phonetic"></div>
+    <div id="meaning" class="meaning hidden">点击“显示释义”查看</div>
+    <div id="example" class="example"></div>
+  </main>
+
+  <div class="controls">
+    <button id="revealBtn">显示释义</button>
+    <button id="nextBtn" class="primary">下一个 →</button>
+  </div>
+
+  <div id="progress" class="progress"></div>
+
+  <script>
+    const API_URL = "/api/words";
+
+    const sampleWords = [
+      { word: "ephemeral", phonetic: "/ɪˈfem(ə)rəl/", meaning: "短暂的，瞬息的", example: "Fame is ephemeral." },
+      { word: "resilient", phonetic: "/rɪˈzɪliənt/", meaning: "有韧性的，能快速恢复的", example: "A resilient economy recovers fast." },
+      { word: "meticulous", phonetic: "/məˈtɪkjələs/", meaning: "一丝不苟的，极其细心的", example: "She keeps meticulous records." },
+      { word: "candid", phonetic: "/ˈkandɪd/", meaning: "坦率的，直言不讳的", example: "He gave a candid answer." },
+    ];
+
+    const els = {
+      status: document.getElementById("status"),
+      word: document.getElementById("word"),
+      phonetic: document.getElementById("phonetic"),
+      meaning: document.getElementById("meaning"),
+      example: document.getElementById("example"),
+      progress: document.getElementById("progress"),
+      revealBtn: document.getElementById("revealBtn"),
+      nextBtn: document.getElementById("nextBtn"),
+    };
+
+    let words = [];
+    let index = 0;
+
+    async function loadWords() {
+      try {
+        const res = await fetch(API_URL);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        words = await res.json();
+        if (!Array.isArray(words) || words.length === 0) throw new Error("空数据");
+        setStatus(true, "后端正常，已加载 " + words.length + " 个单词");
+      } catch (err) {
+        words = sampleWords;
+        setStatus(false, "后端未就绪（" + err.message + "），使用示例数据");
+      }
+      index = 0;
+      render();
+    }
+
+    function setStatus(ok, text) {
+      els.status.textContent = text;
+      els.status.className = "status " + (ok ? "ok" : "fail");
+    }
+
+    function render() {
+      const w = words[index];
+      els.word.textContent = w.word;
+      els.phonetic.textContent = w.phonetic || "";
+      els.meaning.textContent = w.meaning || "";
+      els.example.textContent = w.example || "";
+      els.meaning.classList.add("hidden");
+      els.progress.textContent = (index + 1) + " / " + words.length;
+    }
+
+    els.revealBtn.addEventListener("click", () => {
+      els.meaning.classList.toggle("hidden");
+    });
+
+    els.nextBtn.addEventListener("click", () => {
+      index = (index + 1) % words.length;
+      render();
+    });
+
+    loadWords();
+  </script>
+</body>
+</html>
