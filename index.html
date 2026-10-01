@@ -2,169 +2,637 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>单词本 · 背单词</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Words</title>
   <style>
     :root {
-      --bg: #0f172a;
-      --card: #1e293b;
-      --accent: #38bdf8;
-      --text: #e2e8f0;
-      --muted: #94a3b8;
+      --brand: #0052d9;
+      --bg: #f3f3f3;
+      --white: #ffffff;
+      --gy1: rgba(0, 0, 0, .9);
+      --gy2: rgba(0, 0, 0, .6);
+      --gy3: rgba(0, 0, 0, .4);
+      --gray3: #e7e7e7;
+      --like: #e34d59;
+      --star: #f5a623;
+      --tab-h: 56px;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; overflow: hidden; }
     body {
-      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
+      font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--gy1);
+      background: #e9ebee;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 手机列：窄屏铺满，宽屏居中收束成手机 */
+    .app {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      max-width: 420px;
+      background: var(--white);
       display: flex;
       flex-direction: column;
+      overflow: hidden;
+    }
+    @media (min-width: 480px) {
+      .app {
+        height: 90vh;
+        max-height: 860px;
+        border-radius: 20px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, .18);
+      }
+    }
+
+    /* 顶部导航 */
+    .navbar {
+      flex: none;
+      height: 48px;
+      display: flex;
       align-items: center;
-      padding: 2rem 1rem;
+      justify-content: center;
+      font-size: 17px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--gray3);
+      background: var(--white);
+      position: relative;
     }
-    header { text-align: center; margin-bottom: 2rem; }
-    header h1 { font-size: 2rem; color: var(--accent); }
-    header p { color: var(--muted); margin-top: .5rem; }
-    .status {
-      font-size: .85rem;
-      padding: .3rem .8rem;
+    .navbar .status {
+      position: absolute;
+      right: 10px;
+      font-size: 10px;
+      font-weight: 400;
+      padding: 2px 8px;
       border-radius: 999px;
-      margin-top: .8rem;
-      display: inline-block;
     }
-    .status.ok { background: #14532d; color: #4ade80; }
-    .status.fail { background: #4c1d1d; color: #f87171; }
+    .status.ok { background: #e8f5ee; color: #2ba471; }
+    .status.fail { background: #fdecee; color: var(--like); }
+
+    /* 视图容器 */
+    .views { flex: 1; min-height: 0; position: relative; }
+    .view { position: absolute; inset: 0; display: none; }
+    .view.active { display: block; }
+
+    /* ========== 主页：竖滑卡片流 ========== */
+    .feed {
+      height: 100%;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      scrollbar-width: none;
+    }
+    .feed::-webkit-scrollbar { display: none; }
+    .feed__empty, .feed__loading {
+      height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--gy2); font-size: 15px;
+    }
 
     .card {
-      background: var(--card);
-      border-radius: 1rem;
-      padding: 2.5rem 2rem;
-      width: min(480px, 100%);
-      box-shadow: 0 20px 40px rgba(0,0,0,.3);
-      text-align: center;
-    }
-    .word { font-size: 2.6rem; font-weight: 700; letter-spacing: 1px; }
-    .phonetic { color: var(--muted); margin: .6rem 0 1.2rem; font-style: italic; }
-    .meaning {
-      font-size: 1.2rem;
-      min-height: 1.6rem;
-      transition: opacity .2s;
-    }
-    .meaning.hidden { opacity: 0; }
-    .example {
-      color: var(--muted);
-      font-size: .95rem;
-      margin-top: 1rem;
-      min-height: 1.4rem;
-    }
-
-    .controls {
+      position: relative;
+      height: 100%;
+      scroll-snap-align: start;
+      padding: 60px 24px 150px;
       display: flex;
-      gap: .8rem;
-      margin-top: 2rem;
-      width: min(480px, 100%);
+      flex-direction: column;
+      justify-content: center;
+      background: var(--white);
     }
-    button {
-      flex: 1;
-      padding: .9rem;
-      border: none;
-      border-radius: .6rem;
-      font-size: 1rem;
-      cursor: pointer;
-      background: #334155;
-      color: var(--text);
-      transition: background .15s;
+    .card__body {
+      overflow-y: auto;
+      padding-right: 64px;
+      scrollbar-width: none;
     }
-    button:hover { background: #475569; }
-    button.primary { background: var(--accent); color: #0f172a; font-weight: 600; }
-    button.primary:hover { background: #0ea5e9; }
+    .card__body::-webkit-scrollbar { display: none; }
+    .card__word {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card__definition { font-size: 18px; line-height: 1.6; margin-bottom: 12px; word-break: break-word; }
+    .card__example { font-size: 15px; font-style: italic; color: var(--gy2); line-height: 1.6; margin-bottom: 4px; word-break: break-word; }
+    .card__example-cn { font-size: 14px; color: var(--gy2); line-height: 1.6; word-break: break-word; }
+    .card__extra { margin-top: 10px; padding-left: 10px; border-left: 2px solid var(--brand); }
+    .card__extra-label { font-size: 12px; color: var(--brand); margin-right: 6px; }
+    .card__extra-text { font-size: 13px; color: var(--gy2); line-height: 1.6; }
 
-    .progress { margin-top: 1.5rem; color: var(--muted); font-size: .9rem; }
+    /* 右侧操作栏 */
+    .card__actions {
+      position: absolute;
+      right: 16px;
+      bottom: 130px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .action { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+    .action__icon {
+      width: 44px; height: 44px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; color: #333; background: #f5f5f5;
+      transition: transform .1s;
+    }
+    .action:active .action__icon { transform: scale(.88); }
+    .action__num { font-size: 12px; color: var(--gy2); }
+    .action.liked .action__icon { color: var(--like); }
+    .action.collected .action__icon { color: var(--star); }
+    .action.passed .action__icon { color: var(--brand); }
+
+    /* related */
+    .card__related {
+      position: absolute;
+      left: 24px; right: 72px;
+      bottom: 60px;
+    }
+    .card__related-label { font-size: 13px; color: var(--gy3); }
+    .card__related-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .card__related-item { padding: 4px 12px; font-size: 13px; background: var(--bg); border-radius: 16px; }
+
+    /* ========== pass 列表 ========== */
+    .past { height: 100%; overflow-y: auto; background: var(--bg); padding: 8px 0; }
+    .past__item {
+      display: flex; flex-direction: column; gap: 6px;
+      padding: 16px 20px; background: var(--white);
+      border-bottom: 1px solid var(--gray3);
+      position: relative;
+    }
+    .past__word { font-size: 16px; font-weight: 600; }
+    .past__definition { font-size: 14px; color: var(--gy2); }
+    .past__restore {
+      position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+      font-size: 13px; color: var(--brand); cursor: pointer;
+      padding: 6px 10px;
+    }
+    .past__empty { text-align: center; color: var(--gy2); padding: 60px 0; font-size: 15px; }
+
+    /* ========== 我的 ========== */
+    .my { height: 100%; overflow-y: auto; background: var(--bg); padding: 16px; }
+    .panel { background: var(--white); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    .progress-bar { height: 8px; background: var(--gray3); border-radius: 4px; overflow: hidden; }
+    .progress-bar__fill { height: 100%; background: var(--brand); border-radius: 4px; transition: width .3s; }
+    .progress-text { margin-top: 8px; font-size: 13px; color: var(--gy2); text-align: right; }
+    .setting-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 4px; border-bottom: 1px solid var(--gray3);
+    }
+    .setting-item:last-child { border-bottom: none; }
+    .setting-item__label { font-size: 15px; }
+    .setting-item__value { font-size: 14px; color: var(--gy2); }
+    select { border: none; background: transparent; font-size: 14px; color: var(--gy2); text-align: right; }
+
+    /* ========== 底部 tabbar ========== */
+    .tabbar {
+      flex: none;
+      height: var(--tab-h);
+      display: flex;
+      border-top: 1px solid var(--gray3);
+      background: var(--white);
+    }
+    .tab {
+      flex: 1;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px; font-size: 11px; color: var(--gy3); cursor: pointer;
+    }
+    .tab__icon { font-size: 22px; }
+    .tab.active { color: var(--brand); }
+
+    /* ========== 评论弹层 ========== */
+    .mask {
+      position: absolute; inset: 0; background: rgba(0,0,0,.4);
+      display: none; z-index: 50;
+    }
+    .mask.show { display: block; }
+    .comment-panel {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      height: 60vh; background: var(--white);
+      border-radius: 16px 16px 0 0;
+      display: flex; flex-direction: column;
+      transform: translateY(100%); transition: transform .25s;
+    }
+    .mask.show .comment-panel { transform: translateY(0); }
+    .comment-panel__header {
+      padding: 16px; text-align: center; font-size: 15px; font-weight: 600;
+      border-bottom: 1px solid var(--gray3);
+    }
+    .comment-panel__list { flex: 1; overflow-y: auto; padding: 12px 16px; }
+    .comment-panel__item { padding: 10px 0; border-bottom: 1px solid var(--gray3); font-size: 14px; color: var(--gy1); }
+    .comment-panel__empty { text-align: center; color: var(--gy3); padding: 40px 0; font-size: 14px; }
+    .comment-panel__input { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--gray3); }
+    .comment-panel__field {
+      flex: 1; height: 38px; padding: 0 14px; border: none;
+      background: var(--bg); border-radius: 19px; font-size: 14px; outline: none;
+    }
+    .comment-panel__send {
+      padding: 0 18px; border: none; border-radius: 19px;
+      background: var(--brand); color: #fff; font-size: 14px; cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <header>
-    <h1>单词本</h1>
-    <p>每天进步一点点</p>
-    <span id="status" class="status">正在连接后端…</span>
-  </header>
-
-  <main class="card">
-    <div id="word" class="word">—</div>
-    <div id="phonetic" class="phonetic"></div>
-    <div id="meaning" class="meaning hidden">点击“显示释义”查看</div>
-    <div id="example" class="example"></div>
-  </main>
-
-  <div class="controls">
-    <button id="revealBtn">显示释义</button>
-    <button id="nextBtn" class="primary">下一个 →</button>
+  <div class="app">
+  <div class="navbar">
+    <span id="navTitle">Words</span>
+    <span id="status" class="status">…</span>
   </div>
 
-  <div id="progress" class="progress"></div>
+  <div class="views">
+    <!-- 主页 -->
+    <section class="view active" id="view-home">
+      <div class="feed" id="feed"></div>
+    </section>
 
-  <script>
-    const API_URL = "/api/words";
+    <!-- pass 列表 -->
+    <section class="view" id="view-past">
+      <div class="past" id="past"></div>
+    </section>
+
+    <!-- 我的 -->
+    <section class="view" id="view-my">
+      <div class="my">
+        <div class="panel">
+          <div class="progress-bar"><div class="progress-bar__fill" id="progressFill"></div></div>
+          <div class="progress-text" id="progressText">0 / 0</div>
+        </div>
+        <div class="panel">
+          <div class="setting-item">
+            <span class="setting-item__label">Dictionary</span>
+            <select id="dictSelect"><option>IELTS</option></select>
+          </div>
+          <div class="setting-item">
+            <span class="setting-item__label">Daily Learn</span>
+            <select id="learnSelect"></select>
+          </div>
+          <div class="setting-item">
+            <span class="setting-item__label">Daily Review</span>
+            <select id="reviewSelect"></select>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab active" data-tab="home"><span class="tab__icon">⌂</span>home</div>
+    <div class="tab" data-tab="past"><span class="tab__icon">⏱</span>pass</div>
+    <div class="tab" data-tab="my"><span class="tab__icon">◉</span>mine</div>
+  </div>
+
+  <!-- 评论弹层 -->
+  <div class="mask" id="commentMask">
+    <div class="comment-panel">
+      <div class="comment-panel__header">Comments</div>
+      <div class="comment-panel__list" id="commentList"></div>
+      <div class="comment-panel__input">
+        <input class="comment-panel__field" id="commentField" placeholder="Say something…" />
+        <button class="comment-panel__send" id="commentSend">Send</button>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    // 前端直连 Supabase：publishable key 可公开
+    const SUPABASE_URL = "https://ifkfrxtsbccggjrpuyoo.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_ru8WqSUQSxnDvcYn8hs0TA_0U7VCPB4";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+    const COLLECTION = "zhenjing-ielts";
+    const STORAGE_BASE = SUPABASE_URL + "/storage/v1/object/public/" + COLLECTION;
+    const AUDIO_BASE = STORAGE_BASE + "/audio";
+    const WORDS_URL = STORAGE_BASE + "/words.json";
 
     const sampleWords = [
-      { word: "ephemeral", phonetic: "/ɪˈfem(ə)rəl/", meaning: "短暂的，瞬息的", example: "Fame is ephemeral." },
-      { word: "resilient", phonetic: "/rɪˈzɪliənt/", meaning: "有韧性的，能快速恢复的", example: "A resilient economy recovers fast." },
-      { word: "meticulous", phonetic: "/məˈtɪkjələs/", meaning: "一丝不苟的，极其细心的", example: "She keeps meticulous records." },
-      { word: "candid", phonetic: "/ˈkandɪd/", meaning: "坦率的，直言不讳的", example: "He gave a candid answer." },
+      { word: "atmosphere", definition: "n. 大气层, 大气圈; 气氛", example: "The approaching examination created a tense atmosphere on the campus." },
+      { word: "hydrosphere", definition: "n. 水圈; 大气中的水气", example: "All the water of the earth's surface is included in the hydrosphere." },
+      { word: "lithosphere", definition: "n. 岩石圈", example: "The hydrosphere and the lithosphere together form the earth's surface." },
+      { word: "oxygen", definition: "n. 氧气", example: "Hydrogen and oxygen are gases." },
+      { word: "core", definition: "n. 中心, 核心; 地核", example: "Heat the plum, and then threw the core away." },
+      { word: "crust", definition: "n. 地壳; 外壳", example: "The crust on the snow was thick enough for us to walk on it." },
+      { word: "longitude", definition: "n. 经度(竖的)", example: "The captain determines the latitude and longitude of his ship." },
+      { word: "latitude", definition: "n. 纬度(横的)", example: "Our position is 40 degrees north latitude." },
     ];
 
-    const els = {
-      status: document.getElementById("status"),
-      word: document.getElementById("word"),
-      phonetic: document.getElementById("phonetic"),
-      meaning: document.getElementById("meaning"),
-      example: document.getElementById("example"),
-      progress: document.getElementById("progress"),
-      revealBtn: document.getElementById("revealBtn"),
-      nextBtn: document.getElementById("nextBtn"),
-    };
+    const el = (id) => document.getElementById(id);
+    const statusEl = el("status");
+    const feedEl = el("feed");
 
-    let words = [];
-    let index = 0;
+    let words = [];      // 当前学习流（排除已 pass）
+    let passed = [];     // 已 pass 的词
+    let total = 0;
+
+    function setStatus(ok, text) {
+      statusEl.textContent = text;
+      statusEl.className = "status " + (ok ? "ok" : "fail");
+    }
 
     async function loadWords() {
       try {
-        const res = await fetch(API_URL);
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        words = await res.json();
-        if (!Array.isArray(words) || words.length === 0) throw new Error("空数据");
-        setStatus(true, "后端正常，已加载 " + words.length + " 个单词");
+        const [wRes, sRes] = await Promise.all([
+          fetch(WORDS_URL).then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }),
+          supabase.from("word_stats").select("*").eq("collection", COLLECTION),
+        ]);
+        if (!Array.isArray(wRes) || !wRes.length) throw new Error("empty");
+
+        const statMap = new Map((sRes.data || []).map(s => [s.word, s]));
+        words = wRes.map((w, i) => {
+          const st = statMap.get(w.word) || {};
+          return {
+            _id: w.word || String(i),
+            word: w.word || "",
+            definition: w.definition || "",
+            example: w.example || "",
+            exampleCn: w.exampleCn || w.example_cn || "",
+            collocation: w.collocation || "",
+            mnemonic: w.mnemonic || "",
+            synonyms: w.synonyms || [],
+            liked: false,
+            likeCount: st.like_count || 0,
+            collected: false,
+            collectCount: st.collect_count || 0,
+            commentCount: 0,
+            comments: [],
+          };
+        });
+        setStatus(true, "Supabase · " + words.length);
       } catch (err) {
-        words = sampleWords;
-        setStatus(false, "后端未就绪（" + err.message + "），使用示例数据");
+        words = sampleWords.map((w, i) => ({
+          _id: "s-" + i, word: w.word, definition: w.definition, example: w.example,
+          exampleCn: "", collocation: "", mnemonic: "", synonyms: [],
+          liked: false, likeCount: 0, collected: false, collectCount: 0, commentCount: 0, comments: [],
+        }));
+        setStatus(false, "Sample · " + err.message);
       }
-      index = 0;
-      render();
+      total = words.length;
+      renderFeed();
+      renderMy();
     }
 
-    function setStatus(ok, text) {
-      els.status.textContent = text;
-      els.status.className = "status " + (ok ? "ok" : "fail");
+    // 音频：word → 空格转下划线 → URL 编码
+    const player = new Audio();
+    let playToken = 0;
+    function audioUrl(word, example) {
+      const file = String(word).replace(/\s+/g, "_");
+      return `${AUDIO_BASE}/${encodeURIComponent(file)}${example ? "_example" : ""}.mp3`;
+    }
+    // 播放当前卡片：先读单词，结束后自动读例句
+    function playWord(word) {
+      const token = ++playToken;
+      try { player.pause(); } catch (e) {}
+      player.onended = null;
+      player.src = audioUrl(word, false);
+      player.onended = () => {
+        if (token !== playToken) return;
+        player.onended = null;
+        player.src = audioUrl(word, true);
+        player.play().catch(() => {});
+      };
+      player.play().catch(() => {});
     }
 
-    function render() {
-      const w = words[index];
-      els.word.textContent = w.word;
-      els.phonetic.textContent = w.phonetic || "";
-      els.meaning.textContent = w.meaning || "";
-      els.example.textContent = w.example || "";
-      els.meaning.classList.add("hidden");
-      els.progress.textContent = (index + 1) + " / " + words.length;
+    // 观察哪张卡片进入视口，自动播放
+    let cardObserver = null;
+    function observeCards() {
+      if (cardObserver) cardObserver.disconnect();
+      cardObserver = new IntersectionObserver((entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting && e.intersectionRatio >= 0.6) {
+            const i = Number(e.target.dataset.i);
+            const w = words[i];
+            if (w) playWord(w.word);
+          }
+        });
+      }, { root: feedEl, threshold: [0.6] });
+      feedEl.querySelectorAll(".card").forEach((c) => cardObserver.observe(c));
     }
 
-    els.revealBtn.addEventListener("click", () => {
-      els.meaning.classList.toggle("hidden");
+    function renderFeed() {
+      if (!words.length) {
+        feedEl.innerHTML = '<div class="feed__empty">No words</div>';
+        return;
+      }
+      feedEl.innerHTML = words.map((w, i) => cardHTML(w, i)).join("");
+      observeCards();
+    }
+
+    function cardHTML(w, i) {
+      const extra = [];
+      if (w.collocation) extra.push(`<div class="card__extra"><span class="card__extra-label">phrase</span><span class="card__extra-text">${esc(w.collocation)}</span></div>`);
+      if (w.mnemonic) extra.push(`<div class="card__extra"><span class="card__extra-label">tip</span><span class="card__extra-text">${esc(w.mnemonic)}</span></div>`);
+      const related = w.synonyms.length
+        ? `<div class="card__related"><span class="card__related-label">related</span><div class="card__related-list">${w.synonyms.map(s => `<span class="card__related-item">${esc(s)}</span>`).join("")}</div></div>`
+        : "";
+      return `
+      <div class="card" data-i="${i}">
+        <div class="card__body">
+          <div class="card__word">
+            <span>${esc(w.word)}</span>
+          </div>
+          ${w.definition ? `<div class="card__definition">${esc(w.definition)}</div>` : ""}
+          ${w.example ? `<div class="card__example">${esc(w.example)}</div>` : ""}
+          ${w.exampleCn ? `<div class="card__example-cn">${esc(w.exampleCn)}</div>` : ""}
+          ${extra.join("")}
+        </div>
+        <div class="card__actions">
+          <div class="action ${w.liked ? "liked" : ""}" onclick="onLike(${i})">
+            <div class="action__icon">♥</div>
+            <div class="action__num">${w.likeCount}</div>
+          </div>
+          <div class="action" onclick="onComment(${i})">
+            <div class="action__icon">💬</div>
+            <div class="action__num">${w.commentCount || 0}</div>
+          </div>
+          <div class="action ${w.collected ? "collected" : ""}" onclick="onCollect(${i})">
+            <div class="action__icon">★</div>
+            <div class="action__num">${w.collectCount}</div>
+          </div>
+          <div class="action" onclick="onPass(${i})">
+            <div class="action__icon">✓</div>
+            <div class="action__num">pass</div>
+          </div>
+        </div>
+        ${related}
+      </div>`;
+    }
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    // 点赞/收藏：调用 RPC 原地 +1（服务端 UPDATE，不逐条写）
+    async function bump(i, field, stateKey, countKey) {
+      const w = words[i];
+      w[stateKey] = true;
+      w[countKey] += 1;
+      patchCard(i);
+      const { data, error } = await supabase.rpc("bump_stat", {
+        p_collection: COLLECTION, p_word: w.word, p_field: field,
+      });
+      if (error) {
+        w[countKey] -= 1;
+        patchCard(i);
+        setStatus(false, "Failed · " + error.message);
+      } else if (data) {
+        w.likeCount = data.like_count;
+        w.collectCount = data.collect_count;
+        patchCard(i);
+      }
+    }
+
+    window.onLike = (i) => bump(i, "like", "liked", "likeCount");
+    window.onCollect = (i) => bump(i, "collect", "collected", "collectCount");
+
+    window.onPass = (i) => {
+      const [w] = words.splice(i, 1);
+      passed.unshift(w);
+      renderFeed();
+      renderPast();
+      renderMy();
+    };
+
+    function patchCard(i) {
+      const node = feedEl.querySelector(`.card[data-i="${i}"]`);
+      if (!node) return;
+      const w = words[i];
+      node.outerHTML = cardHTML(w, i);
+    }
+
+    /* 评论 */
+    let activeIdx = null;
+    const mask = el("commentMask");
+    const commentList = el("commentList");
+    const commentField = el("commentField");
+
+    window.onComment = async (i) => {
+      activeIdx = i;
+      commentList.innerHTML = '<div class="comment-panel__empty">Loading…</div>';
+      mask.classList.add("show");
+      commentField.value = "";
+      const w = words[i];
+      const { data, error } = await supabase
+        .from("word_comments")
+        .select("id, content, created_at")
+        .eq("collection", COLLECTION)
+        .eq("word", w.word)
+        .order("created_at", { ascending: false });
+      if (activeIdx !== i) return;
+      w.comments = error ? [] : (data || []);
+      w.commentCount = w.comments.length;
+      renderComments();
+      patchCard(i);
+    };
+
+    function renderComments() {
+      const w = words[activeIdx];
+      if (!w || !w.comments.length) {
+        commentList.innerHTML = '<div class="comment-panel__empty">No comments yet</div>';
+        return;
+      }
+      commentList.innerHTML = w.comments
+        .map(c => `<div class="comment-panel__item">${esc(c.content)}</div>`)
+        .join("");
+    }
+
+    el("commentSend").addEventListener("click", submitComment);
+    commentField.addEventListener("keydown", (e) => { if (e.key === "Enter") submitComment(); });
+    async function submitComment() {
+      const text = commentField.value.trim();
+      if (text === "" || activeIdx == null) return;
+      const w = words[activeIdx];
+      commentField.value = "";
+      const { data, error } = await supabase.rpc("add_comment", {
+        p_collection: COLLECTION, p_word: w.word, p_content: text,
+      });
+      if (error) { setStatus(false, "Failed · " + error.message); return; }
+      w.comments.unshift(data);
+      w.commentCount = (w.commentCount || 0) + 1;
+      renderComments();
+      patchCard(activeIdx);
+    }
+    mask.addEventListener("click", (e) => { if (e.target === mask) mask.classList.remove("show"); });
+
+    /* pass 列表页 */
+    function renderPast() {
+      const box = el("past");
+      if (!passed.length) {
+        box.innerHTML = '<div class="past__empty">No passed words</div>';
+        return;
+      }
+      box.innerHTML = passed.map((w, i) => `
+        <div class="past__item" onclick="togglePast(${i})">
+          <span class="past__word">${esc(w.word)}</span>
+          <span class="past__definition" id="pd-${i}" style="display:none">${esc(w.definition)}</span>
+          <span class="past__restore" onclick="restorePast(event, ${i})">restore</span>
+        </div>`).join("");
+    }
+    window.togglePast = (i) => {
+      const d = el("pd-" + i);
+      if (d) d.style.display = d.style.display === "none" ? "block" : "none";
+    };
+    window.restorePast = (e, i) => {
+      e.stopPropagation();
+      const [w] = passed.splice(i, 1);
+      words.push(w);
+      renderFeed();
+      renderPast();
+      renderMy();
+    };
+
+    /* 我的页 */
+    function renderMy() {
+      const pct = total ? Math.round((passed.length / total) * 100) : 0;
+      el("progressFill").style.width = pct + "%";
+      el("progressText").textContent = passed.length + " / " + total;
+    }
+    [["learnSelect", 10], ["reviewSelect", 20]].forEach(([id, def]) => {
+      const sel = el(id);
+      [10, 20, 30, 50, 100].forEach(n => {
+        const o = document.createElement("option");
+        o.value = n; o.textContent = n;
+        if (n === def) o.selected = true;
+        sel.appendChild(o);
+      });
     });
 
-    els.nextBtn.addEventListener("click", () => {
-      index = (index + 1) % words.length;
-      render();
+    /* tab 切换 */
+    const titles = { home: "Words", past: "pass", my: "mine" };
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        const name = tab.dataset.tab;
+        document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t === tab));
+        document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+        el("view-" + name).classList.add("active");
+        el("navTitle").textContent = titles[name];
+        if (name === "past") renderPast();
+        if (name === "my") renderMy();
+      });
+    });
+
+    // 桌面端滚轮/键盘翻页：接管 scroll-snap，避免一格滚动被吸回
+    let pagerBusy = false;
+    function pageTo(dir) {
+      const h = feedEl.clientHeight;
+      if (!h) return;
+      let idx = Math.round(feedEl.scrollTop / h);
+      idx = Math.max(0, Math.min(words.length - 1, idx + dir));
+      pagerBusy = true;
+      feedEl.scrollTo({ top: idx * h, behavior: "smooth" });
+      setTimeout(() => { pagerBusy = false; }, 450);
+    }
+    feedEl.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      if (pagerBusy || Math.abs(e.deltaY) < 4) return;
+      pageTo(e.deltaY > 0 ? 1 : -1);
+    }, { passive: false });
+    document.addEventListener("keydown", (e) => {
+      if (!el("view-home").classList.contains("active")) return;
+      if (e.key === "ArrowDown" || e.key === "PageDown") { e.preventDefault(); pageTo(1); }
+      if (e.key === "ArrowUp" || e.key === "PageUp") { e.preventDefault(); pageTo(-1); }
     });
 
     loadWords();
